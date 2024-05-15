@@ -56,20 +56,8 @@ class ImageFolder(Dataset):
 
 
 class ListDataset(Dataset):
-    def __init__(self, list_path, img_size=416, multiscale=True, transform=None):
-        with open(list_path, "r") as file:
-            self.img_files = file.readlines()
-
-        self.label_files = []
-        for path in self.img_files:
-            image_dir = os.path.dirname(path)
-            label_dir = "labels".join(image_dir.rsplit("images", 1))
-            assert label_dir != image_dir, \
-                f"Image path must contain a folder named 'images'! \n'{image_dir}'"
-            label_file = os.path.join(label_dir, os.path.basename(path))
-            label_file = os.path.splitext(label_file)[0] + '.txt'
-            self.label_files.append(label_file)
-
+    def __init__(self, config, img_size=416, multiscale=True, transform=None):
+        self.config = config
         self.img_size = img_size
         self.max_objects = 100
         self.multiscale = multiscale
@@ -77,34 +65,23 @@ class ListDataset(Dataset):
         self.max_size = self.img_size + 3 * 32
         self.batch_count = 0
         self.transform = transform
+        
+        self.labels = {x:[] for x in range(len(self.config["images"]))}
+        for ann in self.config["annotations"]:
+            self.labels[ann["image_id"]].append(np.array([ann["category_id"]] + ann["bbox"]))
 
     def __getitem__(self, index):
 
         # ---------
         #  Image
         # ---------
-        try:
-
-            img_path = self.img_files[index % len(self.img_files)].rstrip()
-
-            img = np.array(Image.open(img_path).convert('RGB'), dtype=np.uint8)
-        except Exception:
-            print(f"Could not read image '{img_path}'.")
-            return
+        img_path = self.config["images"][index]["file_name"]
+        img = np.array(Image.open(img_path).convert('RGB'), dtype=np.uint8)
 
         # ---------
         #  Label
         # ---------
-        try:
-            label_path = self.label_files[index % len(self.img_files)].rstrip()
-
-            # Ignore warning if file is empty
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-                boxes = np.loadtxt(label_path).reshape(-1, 5)
-        except Exception:
-            print(f"Could not read label '{label_path}'.")
-            return
+        bb_targets, boxes = self.labels[self.config["images"][index]["id"]]
 
         # -----------
         #  Transform

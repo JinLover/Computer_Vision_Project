@@ -5,6 +5,7 @@ from __future__ import division
 import os
 import argparse
 import tqdm
+import json
 
 import torch
 from torch.utils.data import DataLoader
@@ -61,7 +62,8 @@ def run():
     print_environment_info()
     parser = argparse.ArgumentParser(description="Trains the YOLO model.")
     parser.add_argument("-m", "--model", type=str, default="config/yolov3.cfg", help="Path to model definition file (.cfg)")
-    parser.add_argument("-d", "--data", type=str, default="config/coco.data", help="Path to data config file (.data)")
+    parser.add_argument("-t", "--train", type=str, help="train data config file")
+    parser.add_argument("-val", "--valid", type=str, help="validation data config file")
     parser.add_argument("-e", "--epochs", type=int, default=300, help="Number of epochs")
     parser.add_argument("-v", "--verbose", action='store_true', help="Makes the training more verbose")
     parser.add_argument("--n_cpu", type=int, default=8, help="Number of cpu threads to use during batch generation")
@@ -87,10 +89,12 @@ def run():
     os.makedirs("checkpoints", exist_ok=True)
 
     # Get data configuration
-    data_config = parse_data_config(args.data)
-    train_path = data_config["train"]
-    valid_path = data_config["valid"]
-    class_names = load_classes(data_config["names"])
+    # data_config = parse_data_config(args.data)
+    train_config = json.load(open(args.train))
+    valid_config = json.load(open(args.valid))
+    
+    # class_names = load_classes(data_config["names"])
+    class_names = train_config["classes"]
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # ############
@@ -111,7 +115,7 @@ def run():
 
     # Load training dataloader
     dataloader = _create_data_loader(
-        train_path,
+        train_config,
         mini_batch_size,
         model.hyperparams['height'],
         args.n_cpu,
@@ -119,7 +123,7 @@ def run():
 
     # Load validation dataloader
     validation_dataloader = _create_validation_data_loader(
-        valid_path,
+        valid_config,
         mini_batch_size,
         model.hyperparams['height'],
         args.n_cpu)
