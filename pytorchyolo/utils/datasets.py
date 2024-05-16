@@ -66,7 +66,7 @@ class ListDataset(Dataset):
         self.batch_count = 0
         self.transform = transform
         
-        self.labels = {x:[] for x in range(len(self.config["images"]))}
+        self.labels = {x["id"]:[] for x in self.config["images"]}
         for ann in self.config["annotations"]:
             self.labels[ann["image_id"]].append(np.array([ann["category_id"]] + ann["bbox"]))
 
@@ -75,20 +75,21 @@ class ListDataset(Dataset):
         # ---------
         #  Image
         # ---------
-        img_path = self.config["images"][index]["file_name"]
+        path = "/share/Computer_Vision_Project/Final Project Dataset/"
+        img_path = path + self.config["images"][index]["file_name"]
         img = np.array(Image.open(img_path).convert('RGB'), dtype=np.uint8)
 
         # ---------
         #  Label
         # ---------
-        bb_targets, boxes = self.labels[self.config["images"][index]["id"]]
+        label = np.vstack(self.labels[self.config["images"][index]["id"]])
 
         # -----------
         #  Transform
         # -----------
         if self.transform:
             try:
-                img, bb_targets = self.transform((img, boxes))
+                img, bb_targets = self.transform((img, label))
             except Exception:
                 print("Could not apply transform.")
                 return
@@ -119,4 +120,4 @@ class ListDataset(Dataset):
         return paths, imgs, bb_targets
 
     def __len__(self):
-        return len(self.img_files)
+        return len(self.config["images"])
