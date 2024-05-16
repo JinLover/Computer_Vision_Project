@@ -17,7 +17,6 @@ from pytorchyolo.utils.utils import to_cpu, load_classes, print_environment_info
 from pytorchyolo.utils.datasets import ListDataset
 from pytorchyolo.utils.augmentations import AUGMENTATION_TRANSFORMS
 #from pytorchyolo.utils.transforms import DEFAULT_TRANSFORMS
-from pytorchyolo.utils.parse_config import parse_data_config
 from pytorchyolo.utils.loss import compute_loss
 from pytorchyolo.test import _evaluate, _create_validation_data_loader
 
@@ -89,7 +88,6 @@ def run():
     os.makedirs("checkpoints", exist_ok=True)
 
     # Get data configuration
-    # data_config = parse_data_config(args.data)
     train_config = json.load(open(args.train))
     valid_config = json.load(open(args.valid))
     
@@ -105,7 +103,7 @@ def run():
 
     # Print model
     if args.verbose:
-        summary(model, input_size=(3, model.hyperparams['height'], model.hyperparams['height']))
+        summary(model, input_size=(3, model.hyperparams['height'], model.hyperparams['width']))
 
     mini_batch_size = model.hyperparams['batch'] // model.hyperparams['subdivisions']
 
@@ -113,11 +111,12 @@ def run():
     # Create Dataloader
     # #################
 
+    img_size = max(model.hyperparams['height'], model.hyperparams['width'])
     # Load training dataloader
     dataloader = _create_data_loader(
         train_config,
         mini_batch_size,
-        model.hyperparams['height'],
+        img_size,
         args.n_cpu,
         args.multiscale_training)
 
@@ -125,7 +124,7 @@ def run():
     validation_dataloader = _create_validation_data_loader(
         valid_config,
         mini_batch_size,
-        model.hyperparams['height'],
+        img_size,
         args.n_cpu)
 
     # ################
@@ -242,7 +241,7 @@ def run():
                 model,
                 validation_dataloader,
                 class_names,
-                img_size=model.hyperparams['height'],
+                img_size=img_size,
                 iou_thres=args.iou_thres,
                 conf_thres=args.conf_thres,
                 nms_thres=args.nms_thres,
