@@ -7,6 +7,7 @@ import argparse
 import tqdm
 import random
 import numpy as np
+import json
 
 from PIL import Image
 
@@ -25,7 +26,7 @@ import matplotlib.patches as patches
 from matplotlib.ticker import NullLocator
 
 
-def detect_directory(model_path, weights_path, img_path, classes, output_path,
+def detect_directory(model_path, weights_path, config, output_path,
                      batch_size=8, img_size=416, n_cpu=8, conf_thres=0.5, nms_thres=0.5):
     """Detects objects on all images in specified directory and saves output images with drawn detections.
 
@@ -50,6 +51,10 @@ def detect_directory(model_path, weights_path, img_path, classes, output_path,
     :param nms_thres: IOU threshold for non-maximum suppression, defaults to 0.5
     :type nms_thres: float, optional
     """
+    base_path = "/share/Computer_Vision_Project/Dataset"
+    img_path = [os.path.join(base_path, x["file_name"]) for x in config["images"]]
+    classes = config["classes"]
+    # /share/Computer_Vision_Project/Dataset/train/train/133.png
     dataloader = _create_data_loader(img_path, batch_size, img_size, n_cpu)
     model = load_model(model_path, weights_path)
     img_detections, imgs = detect(
@@ -128,6 +133,7 @@ def detect(model, dataloader, output_path, conf_thres, nms_thres):
     imgs = []  # Stores image paths
 
     for (img_paths, input_imgs) in tqdm.tqdm(dataloader, desc="Detecting"):
+        print(f"img_paths: {img_paths}")
         # Configure input
         input_imgs = Variable(input_imgs.type(Tensor))
 
@@ -253,8 +259,7 @@ def run():
     parser = argparse.ArgumentParser(description="Detect objects on images.")
     parser.add_argument("-m", "--model", type=str, default="config/yolov3.cfg", help="Path to model definition file (.cfg)")
     parser.add_argument("-w", "--weights", type=str, default="weights/yolov3.weights", help="Path to weights or checkpoint file (.weights or .pth)")
-    parser.add_argument("-i", "--images", type=str, default="data/samples", help="Path to directory with images to inference")
-    parser.add_argument("-c", "--classes", type=str, default="data/coco.names", help="Path to classes label file (.names)")
+    parser.add_argument("-c", "--config", type=str,help="Path to config (.json)")
     parser.add_argument("-o", "--output", type=str, default="output", help="Path to output directory")
     parser.add_argument("-b", "--batch_size", type=int, default=1, help="Size of each image batch")
     parser.add_argument("--img_size", type=int, default=416, help="Size of each image dimension for yolo")
@@ -265,13 +270,12 @@ def run():
     print(f"Command line arguments: {args}")
 
     # Extract class names from file
-    classes = load_classes(args.classes)  # List of class names
+    config = json.load(open(args.config))
 
     detect_directory(
         args.model,
         args.weights,
-        args.images,
-        classes,
+        config,
         args.output,
         batch_size=args.batch_size,
         img_size=args.img_size,
