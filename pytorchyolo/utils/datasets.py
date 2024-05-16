@@ -75,7 +75,7 @@ class ListDataset(Dataset):
         # ---------
         #  Image
         # ---------
-        path = "/share/Computer_Vision_Project/Final Project Dataset/"
+        path = "Dataset/"
         img_path = path + self.config["images"][index]["file_name"]
         img = np.array(Image.open(img_path).convert('RGB'), dtype=np.uint8)
 
