@@ -133,7 +133,6 @@ def detect(model, dataloader, output_path, conf_thres, nms_thres):
     imgs = []  # Stores image paths
 
     for (img_paths, input_imgs) in tqdm.tqdm(dataloader, desc="Detecting"):
-        print(f"img_paths: {img_paths}")
         # Configure input
         input_imgs = Variable(input_imgs.type(Tensor))
 
