@@ -5,6 +5,7 @@ from __future__ import division
 import argparse
 import tqdm
 import numpy as np
+import os
 
 from terminaltables import AsciiTable
 
@@ -19,7 +20,7 @@ from pytorchyolo.utils.transforms import DEFAULT_TRANSFORMS
 import json
 
 
-def evaluate_model_file(model_path, weights_path, img_path, class_names, batch_size=8, img_size=416,
+def evaluate_model_file(model_path, weights_path, config, batch_size=8, img_size=416,
                         n_cpu=8, iou_thres=0.5, conf_thres=0.5, nms_thres=0.5, verbose=True):
     """Evaluate model on validation dataset.
 
@@ -47,13 +48,14 @@ def evaluate_model_file(model_path, weights_path, img_path, class_names, batch_s
     :type verbose: bool, optional
     :return: Returns precision, recall, AP, f1, ap_class
     """
+    classes = config["classes"]
     dataloader = _create_validation_data_loader(
-        img_path, batch_size, img_size, n_cpu)
+        config, batch_size, img_size, n_cpu)
     model = load_model(model_path, weights_path)
     metrics_output = _evaluate(
         model,
         dataloader,
-        class_names,
+        classes,
         img_size,
         iou_thres,
         conf_thres,
@@ -178,14 +180,11 @@ def run():
     # Load configuration from data file
     data_config = json.load(open(args.config))
     # Path to file containing all images for validation
-    valid_path = data_config["valid"]
-    class_names = data_config["classes"]
 
     precision, recall, AP, f1, ap_class = evaluate_model_file(
         args.model,
         args.weights,
-        valid_path,
-        class_names,
+        data_config,
         batch_size=args.batch_size,
         img_size=args.img_size,
         n_cpu=args.n_cpu,
