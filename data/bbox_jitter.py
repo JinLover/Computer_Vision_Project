@@ -10,7 +10,7 @@ import re
 # 맨 처음 파일 받았을 때
 # train set 456개(unlabeled 포함), annotations 1748개
 default_labeled_images = 230
-default_annotations = 1748
+default_annotations = 1161
 OFFSET = 1000000
 
 def remove_temp_files():
@@ -82,7 +82,9 @@ def augmentation_loop(train_json, random_flip, max_jitter_x, max_jitter_y, excep
     excluding_samples = dict()
     for i in range(len(exception_list)):
         excluding_samples[i] = i
-
+        
+        
+    ann_cnt = 0
     for i in range(default_annotations):
         image_id = annotations[i]['image_id']
         if excluding_samples.get(image_id) is not None:
@@ -155,7 +157,9 @@ def augmentation_loop(train_json, random_flip, max_jitter_x, max_jitter_y, excep
         cv2.imwrite(aug_path, img)
         
         tmp_img_id = OFFSET + image_id
-        tmp_bbox_ann = make_bbox_annotation(tmp_img_id, tmp_img_id, category_id, [new_x, new_y, new_w, new_h])
+        tmp_ann_id = annotations_len + ann_cnt
+        ann_cnt += 1
+        tmp_bbox_ann = make_bbox_annotation(tmp_ann_id, tmp_img_id, category_id, [new_x, new_y, new_w, new_h])
 
         tmp_bbox_ann_list.append(tmp_bbox_ann)
 
@@ -187,7 +191,7 @@ def augmentation_loop(train_json, random_flip, max_jitter_x, max_jitter_y, excep
     
     for bbox_ann in tmp_bbox_ann_list:
         tmp_id = int(bbox_ann['image_id'])
-        bbox_ann['id'] = img_id_mapping[tmp_id]
+        #bbox_ann['id'] = img_id_mapping[tmp_id]
         bbox_ann['image_id'] = img_id_mapping[tmp_id]
 
     # add augmented annotations to original json data
