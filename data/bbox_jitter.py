@@ -11,6 +11,7 @@ import re
 # train set 456개(unlabeled 포함), annotations 1748개
 default_labeled_images = 230
 default_annotations = 1748
+OFFSET = 1000000
 
 def remove_temp_files():
     current_dir = os.getcwd()
@@ -73,16 +74,16 @@ def augmentation_loop(train_json, random_flip, max_jitter_x, max_jitter_y, excep
     img_info = train_json['images']
     annotations = train_json['annotations']
     annotations_len = len(annotations)
-
+    
     aug_chk = dict()
     tmp_img_id_list = []
-    tmp_img_ann_list = []
+    
     tmp_bbox_ann_list = []
     excluding_samples = dict()
     for i in range(len(exception_list)):
         excluding_samples[i] = i
 
-    for i in tqdm(range(default_annotations)):
+    for i in range(default_annotations):
         image_id = annotations[i]['image_id']
         if excluding_samples.get(image_id) is not None:
             # skip the whole augmentation process
@@ -90,7 +91,7 @@ def augmentation_loop(train_json, random_flip, max_jitter_x, max_jitter_y, excep
         
         img_h = img_info[image_id]['height']
         img_w = img_info[image_id]['width']
-        aug_path = f'train/tmp_{image_id}.png'
+        aug_path = f'train/{OFFSET + image_id}.png'
         img_path = img_info[image_id]['file_name']
         
         # try to read augmented image,
@@ -126,23 +127,6 @@ def augmentation_loop(train_json, random_flip, max_jitter_x, max_jitter_y, excep
         except Exception as e:
             print(f'pass annotation {i}')
             continue
-            
-        # new_x = (x + jitter_x) // 1
-        # new_y = (y + jitter_y) // 1
-        
-        # #print(new_x, new_y)
-        
-        # paste_target = img[max(new_y,0):min(new_y+h,img_h) , max(new_x,0):min(new_x+w, img_w), :]
-        # new_h, new_w, _ = paste_target.shape
-        
-        # # pasted region should be inside the
-        # # original image boundary
-        # y1 = min(max(new_y,0),img_h)
-        # y2 = min(new_y+new_h,img_h)
-        # x1 = min(max(new_x,0),img_w)
-        # x2 = min(new_x+new_w,img_w)
-        # new_h = y2 - y1
-        # new_w = x2 - x1
         
         y_start = max(0, y+jitter_y)
         y_end = min(y+jitter_y+h, img_h)
@@ -170,45 +154,47 @@ def augmentation_loop(train_json, random_flip, max_jitter_x, max_jitter_y, excep
 
         cv2.imwrite(aug_path, img)
         
-        tmp_img_id = f'tmp_{image_id}'
-        tmp_img_info_ann = make_img_info_annotation(tmp_img_id, img_w, img_h)
-        new_ann_id = annotations_len + i
-        tmp_bbox_ann = make_bbox_annotation(new_ann_id, tmp_img_id, category_id, [new_x, new_y, new_w, new_h])
+        tmp_img_id = OFFSET + image_id
+        tmp_bbox_ann = make_bbox_annotation(tmp_img_id, tmp_img_id, category_id, [new_x, new_y, new_w, new_h])
 
-        if aug_chk.get(tmp_img_id) is None:
-            aug_chk[tmp_img_id] = "chk"
-            tmp_img_id_list.append(tmp_img_id)
-        tmp_img_ann_list.append(tmp_img_info_ann)
         tmp_bbox_ann_list.append(tmp_bbox_ann)
 
     # re-map tmp_img_id into real image id
     # change all temporary image ids
     
+    current_dir = os.getcwd()
+    #print(current_dir)
+    train_dir = os.path.join(current_dir + '/train')
+    
+    regex = re.compile(r'\d+')
+    aug_cnt = 0
     img_id_mapping = dict()
-    print(len(tmp_img_id_list))
-    for i in range(len(tmp_img_id_list)):
-        img_id_mapping[tmp_img_id_list[i]] = image_len + i
+    img_ann_list = []
+    
+    for filename in os.listdir(train_dir):
+        fname_int = int(regex.search(filename).group(0))
+        if fname_int > OFFSET:
+            real_id = aug_cnt + image_len
+            #print(fname_int, real_id)
+            img_id_mapping[fname_int] = real_id
+            aug_cnt += 1
 
-    for img_ann in tmp_img_ann_list:
-        tmp_id = img_ann['id']
-        img_ann['id'] = img_id_mapping[tmp_id]
-
+    print(len(img_id_mapping.keys()))
+    
+    for k in img_id_mapping.keys():
+        os.rename(f'train/{k}.png', f'train/{img_id_mapping[k]}.png')
+        img_ann_list.append(make_img_info_annotation(img_id_mapping[k], 640, 345))
+    
     for bbox_ann in tmp_bbox_ann_list:
-        tmp_id = bbox_ann['image_id']
+        tmp_id = int(bbox_ann['image_id'])
+        bbox_ann['id'] = img_id_mapping[tmp_id]
         bbox_ann['image_id'] = img_id_mapping[tmp_id]
-
-    # change train image name from
-    # tmp_i.png to j.png
-    for tmp_id in tmp_img_id_list:
-        aug_path = f'train/{tmp_id}.png'
-        img = cv2.imread(aug_path)
-        cv2.imwrite(f'train/{img_id_mapping[tmp_id]}.png', img)
 
     # add augmented annotations to original json data
     # and save them
-    img_info.extend(tmp_img_ann_list)
+    img_info.extend(img_ann_list)
     annotations.extend(tmp_bbox_ann_list)
-    with open('train.json', 'w') as f:
+    with open('train_augmented.json', 'w') as f:
         output_json = dict()
         output_json['images'] = img_info
         output_json['annotations'] = annotations
@@ -223,8 +209,8 @@ def generate_bbox_augmented_dataset(json_file_name, max_jitter_x = 15.0, max_jit
         augment_iters (int, optional): number of augmentation iterations. Defaults to 1.
         exception_list (list, optional): images excluded from augmentation. Defaults to [].
     """
-    
-    for i in tqdm(range(augment_iters)):
+    for i in range(augment_iters):
+    #for i in tqdm(range(augment_iters)):
         with open(json_file_name, 'r') as f:
             train_json = json.load(f)
         augmentation_loop(train_json, random_flip, max_jitter_x, max_jitter_y, exception_list)
