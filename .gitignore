@@ -18,3 +18,6 @@ logs/
 .python-version
 
 Dataset/
+
+pred.json
+predictions.zip
