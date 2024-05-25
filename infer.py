@@ -19,10 +19,11 @@ from pathlib import Path
 
 images = sorted([str(x) for x in Path("Dataset/test").rglob("*.png")])
 dataloader = _create_data_loader(images, 1, 416, 8)
-model = load_model("config/yolov3-custom.cfg", "checkpoints/yolov3_ckpt_429.pth").cuda()
+model = load_model("config/yolov3-custom.cfg", "checkpoints/yolov3_ckpt_300.pth").cuda()
 model.eval()
 
 pred = []
+# conf_thres = 0.5
 conf_thres = 0.001
 nms_thres = 0.4
 
