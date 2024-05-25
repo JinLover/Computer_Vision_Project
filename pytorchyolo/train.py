@@ -148,6 +148,10 @@ def run():
     else:
         print("Unknown optimizer. Please choose between (adam, sgd).")
 
+    scheduler = optim.lr_scheduler.LambdaLR(optimizer=optimizer,
+                                    lr_lambda=lambda epoch: 0.99 ** epoch,
+                                    last_epoch=-1,
+                                    verbose=False)
     # skip epoch zero, because then the calculations for when to evaluate/checkpoint makes more intuitive sense
     # e.g. when you stop after 30 epochs and evaluate every 10 epochs then the evaluations happen after: 10,20,30
     # instead of: 0, 10, 20
@@ -156,6 +160,7 @@ def run():
         print("\n---- Training Model ----")
 
         model.train()  # Set model to training mode
+
 
         for batch_i, (_, imgs, targets) in enumerate(tqdm.tqdm(dataloader, desc=f"Training Epoch {epoch}")):
             batches_done = len(dataloader) * epoch + batch_i
@@ -176,7 +181,7 @@ def run():
             if batches_done % model.hyperparams['subdivisions'] == 0:
                 # Adapt learning rate
                 # Get learning rate defined in cfg
-                lr = model.hyperparams['learning_rate']
+                # lr = model.hyperparams['learning_rate']
                 # if batches_done < model.hyperparams['burn_in']:
                 #     # Burn in
                 #     lr *= (batches_done / model.hyperparams['burn_in'])
@@ -186,10 +191,10 @@ def run():
                 #         if batches_done > threshold:
                 #             lr *= value
                 # Log the learning rate
-                logger.scalar_summary("train/learning_rate", lr, batches_done)
                 # Set learning rate
                 for g in optimizer.param_groups:
-                    g['lr'] = lr
+                    lr = g['lr']
+                logger.scalar_summary("train/learning_rate", lr, batches_done)
 
                 # Run optimizer
                 optimizer.step()
@@ -256,6 +261,7 @@ def run():
                     ("validation/mAP", AP.mean()),
                     ("validation/f1", f1.mean())]
                 logger.list_of_scalars_summary(evaluation_metrics, epoch)
+        scheduler.step()
 
 
 if __name__ == "__main__":
