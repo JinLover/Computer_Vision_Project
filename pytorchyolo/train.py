@@ -149,7 +149,7 @@ def run():
         print("Unknown optimizer. Please choose between (adam, sgd).")
 
     scheduler = optim.lr_scheduler.LambdaLR(optimizer=optimizer,
-                                    lr_lambda=lambda epoch: 0.99 ** epoch,
+                                    lr_lambda=lambda epoch: 0.955 ** (epoch // 10),
                                     last_epoch=-1,
                                     verbose=False)
     # skip epoch zero, because then the calculations for when to evaluate/checkpoint makes more intuitive sense
