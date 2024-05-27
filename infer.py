@@ -17,14 +17,14 @@ from pytorchyolo.detect import _create_data_loader
 import json
 from pathlib import Path
 
-images = sorted([str(x) for x in Path("Dataset/test").rglob("*.png")])
-dataloader = _create_data_loader(images, 1, 416, 8)
 model = load_model("config/yolov3-custom.cfg", "checkpoints/yolov3_ckpt_300.pth").cuda()
 model.eval()
+images = sorted([str(x) for x in Path("Dataset/test").rglob("*.png")])
+dataloader = _create_data_loader(images, 1, model.hyperparams["height"], 8)
 
 pred = []
 # conf_thres = 0.5
-conf_thres = 0.001
+conf_thres = 0.01
 nms_thres = 0.4
 
 for (img_paths, input_imgs) in tqdm(dataloader, desc="Detecting"):
@@ -35,7 +35,7 @@ for (img_paths, input_imgs) in tqdm(dataloader, desc="Detecting"):
         detections = non_max_suppression(detections, conf_thres, nms_thres)
         
         h, w = (345, 640)
-        detections = rescale_boxes(detections[0], 416, (h, w))
+        detections = rescale_boxes(detections[0], model.hyperparams["height"], (h, w))
         for x1, y1, x2, y2, conf, cls_pred in detections:
             x1, y1, x2, y2, conf, cls_pred = map(lambda x:x.item(), [x1, y1, x2, y2, conf, cls_pred])
             x1, y1, x2, y2 = map(lambda x: 0 if x < 0 else x, [x1, y1, x2, y2])
