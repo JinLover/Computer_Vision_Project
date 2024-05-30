@@ -17,7 +17,7 @@ from pytorchyolo.detect import _create_data_loader
 import json
 from pathlib import Path
 
-model = load_model("config/yolov3-custom.cfg", "checkpoints/yolov3_ckpt_300.pth").cuda()
+model = load_model("config/yolov3-custom.cfg", "checkpoints/yolov3_ckpt_400.pth").cuda()
 model.eval()
 images = sorted([str(x) for x in Path("Dataset/test").rglob("*.png")])
 dataloader = _create_data_loader(images, 1, model.hyperparams["height"], 8)
@@ -27,10 +27,17 @@ pred = []
 conf_thres = 0.01
 nms_thres = 0.4
 
+elapsed_time = []
+
 for (img_paths, input_imgs) in tqdm(dataloader, desc="Detecting"):
     name = img_paths[0].split("/")[-1].split(".")[0]
     # Get detections
     with torch.no_grad():
+        # check the inference time
+        start = torch.cuda.Event(enable_timing=True)
+        end = torch.cuda.Event(enable_timing=True)
+        start.record()
+        
         detections = model(input_imgs.cuda())
         detections = non_max_suppression(detections, conf_thres, nms_thres)
         
@@ -47,12 +54,16 @@ for (img_paths, input_imgs) in tqdm(dataloader, desc="Detecting"):
                         "bbox": list(map(lambda x:float(f"{x:.3f}"), [x1, y1, x2-x1, y2-y1])),
                         "score": float(f"{conf:.5f}"),
                     })
+        end.record()
+        torch.cuda.synchronize()
+        elapsed_time.append(start.elapsed_time(end))
+print(f"Average inference time: {np.mean(elapsed_time):.3f} ms")
 
-# Save the list of predictions as a JSON file
-with open("pred.json", "w") as f:
-    json.dump(pred, f)
+# # Save the list of predictions as a JSON file
+# with open("pred.json", "w") as f:
+#     json.dump(pred, f)
 
-# Create a ZIP file and add the JSON file to it
-zip_file = zipfile.ZipFile("predictions.zip", "w")
-zip_file.write("pred.json")
-zip_file.close()
+# # Create a ZIP file and add the JSON file to it
+# zip_file = zipfile.ZipFile("predictions.zip", "w")
+# zip_file.write("pred.json")
+# zip_file.close()
