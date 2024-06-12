@@ -25,6 +25,7 @@ dataloader = _create_data_loader(images, 1, model.hyperparams["height"], 8)
 pred = []
 # conf_thres = 0.5
 conf_thres = 0.01
+
 nms_thres = 0.4
 
 elapsed_time = []
