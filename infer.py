@@ -17,7 +17,24 @@ from pytorchyolo.detect import _create_data_loader
 import json
 from pathlib import Path
 
-model = load_model("config/yolov3-custom.cfg", "checkpoints/yolov3_ckpt_400.pth").cuda()
+import argparse
+
+"""
+File to generate prediction result for submission to CodaLab
+model_num : number of the checkpoint file to test. default as 500.
+(default train length is 500 epochs)
+save : if set, generate pred.json and predctions.zip file.
+"""
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--model_num', dest='model_num', default=500, type=int)
+parser.add_argument('--save', dest='save', action='store_true')
+
+args = parser.parse_args()
+
+MODEL_NUM = args.model_num
+
+model = load_model("config/yolov3-custom.cfg", f'checkpoints/yolov3_ckpt_{MODEL_NUM}.pth').cuda()
 model.eval()
 images = sorted([str(x) for x in Path("Dataset/test").rglob("*.png")])
 dataloader = _create_data_loader(images, 1, model.hyperparams["height"], 8)
@@ -60,11 +77,13 @@ for (img_paths, input_imgs) in tqdm(dataloader, desc="Detecting"):
         elapsed_time.append(start.elapsed_time(end))
 print(f"Average inference time: {np.mean(elapsed_time):.3f} ms")
 
-# # Save the list of predictions as a JSON file
-# with open("pred.json", "w") as f:
-#     json.dump(pred, f)
 
-# # Create a ZIP file and add the JSON file to it
-# zip_file = zipfile.ZipFile("predictions.zip", "w")
-# zip_file.write("pred.json")
-# zip_file.close()
+if args.save is True: 
+    # Save the list of predictions as a JSON file
+    with open("pred.json", "w") as f:
+        json.dump(pred, f)
+
+    # Create a ZIP file and add the JSON file to it
+    zip_file = zipfile.ZipFile("predictions.zip", "w")
+    zip_file.write("pred.json")
+    zip_file.close()

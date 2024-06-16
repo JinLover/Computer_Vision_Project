@@ -25,9 +25,9 @@ python3 bbox_jitter.py --json_file_name train.json --max_jitter_x 5.0 --max_jitt
 
 #### Config variables
 
-- json_file_name: name of the `train.json` file
-- max_jitter_x: maximum jitter postion of bbox by x axis
-- max_jitter_y: maximum jitter postion of bbox by y axis
-- random_flip: if set true, vertically flip bbox with 50% prob.
-- augment_iters: number of iterations for the augmentation loop
-- exception_list: index of images those are to be excluded from augmentation.
+- `json_file_name`: name of the `train.json` file
+- `max_jitter_x`: maximum jitter postion of bbox by x axis
+- `max_jitter_y`: maximum jitter postion of bbox by y axis
+- `random_flip`: if set true, vertically flip bbox with 50% prob.
+- `augment_iters`: number of iterations for the augmentation loop
+- `exception_list`: index of images those are to be excluded from augmentation.
